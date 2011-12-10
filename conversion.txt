@@ -1,0 +1,52 @@
+;This is the conversion file that stores the info for whatever instrument.
+;The format is <PARAMETER TITLE> = <CC#>, <Param #>
+;SYSEX STRINGS have a special little format -- L for midi channel, P for parameter number (sysex functions for knobs usually do it this way), V for value of parameter to send (last byte of a CC msg)
+;Example: LFO Rate = 14, 00 
+;SYSEXSTRINGFORMAT="F0 41 32 0L PP VV F7"
+
+[CONVERT_START]
+
+TITLE="Juno 106"
+SENDCHANNEL=1
+RECVCHANNEL=5
+SYSEXSTRINGLENGTH=7
+SYSEXSTRINGFORMAT="F0 41 32 00 PP VV F7"
+
+[FADER_BUFFER_START]
+
+"LFO Rate"=14, 00
+"LFO Delay"=15, 01
+"DCO LFO Mod Level"=16, 02
+"DCO PWM Mod Level"=17, 03
+"Noise Level"=18, 04
+"VCF Cutoff Level"=19, 05
+"VCF Resonance Level"=20, 06
+"VCF Env Level"=21, 07
+"VCF LFO Mod Level"=22, 08
+"VCF KYBD Mod Level"=23, 09
+"VCA Level"=24, 10
+"ENV Attack Rate"=25, 11
+"ENV Decay Rate"=26, 12
+"ENV Sustain Level"=27, 13
+"ENV Release Rate"=28, 14
+"Sub Level"=29, 15
+
+[BUTTON_BUFFER_START]
+
+"Range 16'"=30,16,1,:001,0
+"Range 8'"=30,16,1,:010,0
+"Range 4'"=30,16,1,:100,0
+"Pulse"=31,16,0,:1,3
+"Sawtooth"=31,16,0,:1,4
+"Chorus Off"=33,16,2,:11,5
+"Chorus I"=33,16,2,:10,5
+"Chorus II"=33,16,2,:00,5
+"PWM Manual/LFO"=34,17,0,:0,0
+"ENV +/-"=35,17,0,:0,1
+"VCA Gate/ENV"=36,17,0,:0,2
+"High Pass Filter Off"=37,17,3,:11,3
+"High Pass Filter I"=37,17,3,:10,3
+"High Pass Filter II"=37,17,3,:01,3
+"High Pass Filter III"=37,17,3,:00,3
+
+[CONVERT_END]
