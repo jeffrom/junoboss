@@ -172,7 +172,7 @@ MIDIPacket*
 convCCKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
 {
     int count = 0;      	/* number of removed packets */
-    for (int i = 0; i < pktList->numPackets; i++)
+    for (unsigned int i = 0; i < pktList->numPackets; i++)
         if (pktList->packet[i].data[0] == CC_MSG_BYTE + (defs->recvchannel - 1))
             count++;
     int retval = pktList->numPackets - count; /* number of packets in the list - number of removed packets */
@@ -185,7 +185,7 @@ convCCKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
             exit(1);
         }
 
-        for (int i = 0; i < pktList->numPackets; i++) {
+        for (unsigned int i = 0; i < pktList->numPackets; i++) {
             if (pktList->packet[i].data[0] != CC_MSG_BYTE + (defs->recvchannel - 1)) {
                 /* if this is a cc packet but is from the conversion proc (sending to recv channel), don't add it */
 
@@ -272,7 +272,7 @@ MIDIPacket*
 convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
 {
     int count = 0;      	/* number of removed packets */
-    for (int i = 0; i < pktList->numPackets; i++)
+    for (unsigned int i = 0; i < pktList->numPackets; i++)
         if (pktList->packet[i].data[0] == SX_OPEN_BYTE
             && pktList->packet[i].data[defs->sysex_channel_pos] == (defs->sendchannel - 1))
             count++;
@@ -281,7 +281,7 @@ convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
         /* setup the new packet list */
 
         MIDIPacket *ppkt = MIDIPacketListInit(newList);
-        for (int i = 0; i < pktList->numPackets; i++) {
+        for (unsigned int i = 0; i < pktList->numPackets; i++) {
             /* if either it's not a sysex message at all or it is one not meant to be converted again */
             if (pktList->packet[i].data[0] != SX_OPEN_BYTE) {
                 if (pktList->packet[i].length != 0) {		/* fill the packet and add it */
@@ -484,7 +484,7 @@ get_dests()
     err = MIDIObjectGetStringProperty(epSynth, kMIDIPropertyName, &sname);
     errCheck(err);
     CFStringGetCString(sname, &csname[0], sizeof(csname), 0);
-    for (int i = 0; i < numdests; i++) {
+    for (unsigned int i = 0; i < numdests; i++) {
         MIDIEndpointRef ep = MIDIGetDestination(i);
         err = MIDIObjectGetStringProperty(ep, kMIDIPropertyName, &dname);
         errCheck(err);
@@ -498,7 +498,7 @@ get_dests()
     err = MIDIObjectGetStringProperty(epHost, kMIDIPropertyName, &sname);
     errCheck(err);
     CFStringGetCString(sname, &csname[0], sizeof(csname), 0);
-    for (int i = 0; i < numdests; i++) {
+    for (i = 0; i < numdests; i++) {
         MIDIEndpointRef ep = MIDIGetDestination(i);
         err = MIDIObjectGetStringProperty(ep, kMIDIPropertyName, &dname);
         errCheck(err);
@@ -545,7 +545,7 @@ choose_midi_device()
     printf("---------------------------------------------------------------\n");
     printf("Choose MIDI Interface (0-%lu):\n", devamt - 1);
     printf("---------------------------------------------------------------\n");
-    for (int i = 0; i < devamt; i++) {
+    for (unsigned long i = 0; i < devamt; i++) {
         CFStringRef pname, pmanuf, pmodel;
         char name[64], manuf[64], model[64];
         MIDIEndpointRef ep = MIDIGetDestination(i);
@@ -566,14 +566,14 @@ choose_midi_device()
         CFRelease(pname);
         CFRelease(pmanuf);
         CFRelease(pmodel);
-        printf("%d) %s - %s - %s\n", i, name, manuf, model);
+        printf("%lu) %s - %s - %s\n", i, name, manuf, model);
     }
 
     printf("Interface (0-%lu): ", devamt - 1);
     char c = 0;
     while (1) {
         c = getchar();
-        long num = 0;
+        unsigned long num = 0;
         if (c != '\0' || c != '\n') {
             num = strtol(&c, NULL, 10);
             if (num >= devamt) {

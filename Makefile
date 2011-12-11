@@ -1,7 +1,7 @@
 CC=clang
-FLAGS=
+FLAGS=-Wall -Wextra
 FEXTRA=-Wl,-dead_strip -framework CoreMIDI -framework CoreFoundation
-CFLAGS=-c
+CFLAGS=-c -std=c90 -ansi
 PROGRAM=junoboss
 OBJECTS=main.o midi_io.o bithex.o file_io.o settings.o conv_faders.o conv_buttons.o errcheck.o
 

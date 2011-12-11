@@ -294,7 +294,7 @@ colon_blow(char *token, const char delims[MAX_DELIMS], size_t size)
     int ci = 0;			/* index number for copying */
     int rmv;			/* will be 0 if copy, 1 if not */
     lastbitmasklen = 0;
-    int i;
+    size_t i;
 
     for (i = 0; i < size && *(token + i) != '\0'; i++) {
 	rmv = 0;        	/* reset remove flag */

@@ -81,14 +81,13 @@ main(int argc, char *argv[])
 
     if (avg_fader_count != 0) {
     	printf("Number of fader packets sent: %d\nAverage time: %llu nanos\n", avg_fader_count, avg_fader_conv / avg_btn_count);
-    }
-    else {
+    } else {
         printf("No fader messages converted.\n");
     }
+
     if (avg_btn_count != 0) {
         printf("Number of button packets sent: %d\nAverage time: %llu nanos\n", avg_btn_count, avg_btn_conv / avg_btn_count);
-    }
-    else {
+    } else {
         printf("No button messages converted.\n");
     }
 

@@ -43,7 +43,7 @@ int create_sysex_string(char *str);
 int create_cc_string();
 
 /* local vars */
-int rec = 0;        		/* for recursion */
+size_t rec = 0;        		/* for recursion */
 int reccount = 0;   		/* a counting var for recursive funx */
 int recsecondbyte = 0;      	/* counts bytes in the format string creator */
 
@@ -90,7 +90,7 @@ load_instrument_settings()
     if (verbose) {
         printf("SYSEXSTRINGFORMAT = %s\n", p);
         printf("Parsed into heap as: ");
-	int i;
+	unsigned int i;
         for (i = 0; i < defaults.sysex_strlen; i++)
             printf("%02X ", sx_fstr[i]);
         printf("\n");

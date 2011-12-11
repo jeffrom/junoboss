@@ -13,7 +13,7 @@
 #include <CoreMIDI/CoreMIDI.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-//#include "errcheck.h"
+/* #include "errcheck.h" */
 
 void errCheck(OSStatus err);
 

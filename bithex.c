@@ -83,12 +83,12 @@ Byte
 binstringtobyte(char *x)
 {
     Byte sum = 0;
-    int n, b, m;
-    size_t len;
+    int n, b;
+    size_t len, m;
     char p;
     len = strlen(x) - 1;
 
-    int i;
+    size_t i;
     for (i = 0; i <= len; i++) {
 	if (x[i] == '\0')
 	    break;
@@ -96,7 +96,7 @@ binstringtobyte(char *x)
 	/* printf("Char %c --> ", p); */
 	n = atoi(&p);		/* char to numeric value */
 
-	for (b = 1, m = (int)len; m > i; m--) { /* typecasting b/c len is a size_t */
+	for (b = 1, m = len; m > i; m--) { /* typecasting b/c len is a size_t */
 	    b *= 2;
 	}
 	/* sum it */

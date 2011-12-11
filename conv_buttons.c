@@ -108,8 +108,7 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
     uint64_t time = mach_absolute_time();
 
     pthread_mutex_lock(&mtx);
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].cc_param_number == parambyte)
             /* this is a cc param match -- now check for behavior(groups/non-group/special) */
         {
@@ -259,8 +258,7 @@ cc_sx_preppacket:
         /* if cnvStatus == 1, we know we have a button to turn on that isn't on now */
 
         pktToSend->length = defs->sysex_strlen;
-	int i;
-        for (i = 0; i < pktToSend->length; i++)
+        for (unsigned int i = 0; i < pktToSend->length; i++)
             if (i != defs->sysex_param_pos && i != defs->sysex_value_pos)
                 pktToSend->data[i] = sx_fstr[i];
         pktToSend->data[defs->sysex_param_pos] = sxparamtosend;
@@ -268,12 +266,13 @@ cc_sx_preppacket:
         pktToSend->timeStamp = mach_absolute_time();
 
         /* set lastbyte */
-        for (i = 0; i < btn_sx_rangeamt; i++) {
-            if (sxparamtosend == btn_lastbyte[i].param) {
-                btn_lastbyte[i].lastval = valbytetosend;
+        for (int j = 0; j < btn_sx_rangeamt; j++) {
+            if (sxparamtosend == btn_lastbyte[j].param) {
+                btn_lastbyte[j].lastval = valbytetosend;
                 break;
             }
         }
+
         duration = mach_absolute_time() - time;
         /* convert duration to nanoseconds */
         duration *= info.numer;
@@ -284,8 +283,7 @@ cc_sx_preppacket:
 
         if (verbose) {
             printf("--> [%d]: ", defs->sysex_strlen);
-	    int i;
-            for (i = 0; i < defs->sysex_strlen; i++) {
+            for (unsigned int i = 0; i < defs->sysex_strlen; i++) {
                 if (i == defs->sysex_value_pos)
                     printf("%02d ", pktToSend->data[i]);
                 else
@@ -433,10 +431,10 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                 } else if (i >= btn_conv_buf[ii].index_start
 			   && i < btn_conv_buf[ii].index_end
 			   && btn_conv_buf[ii].sx_param_number == btn_lastbyte[rangei].param) {
-                    /* falls within a group bitmask--compare bitmask to lastbyte to figure out which member */
-		    /* this should land on the first group member first */
-		    int iii;
-		    for (iii = ii; btn_conv_buf[iii].group == btn_conv_buf[ii].group; iii++) {
+                    /* falls within a group bitmask--compare bitmask
+		       to lastbyte to figure out which member this
+		       should land on the first group member first */
+		    for (unsigned int iii = ii; btn_conv_buf[iii].group == btn_conv_buf[ii].group; iii++) {
                         /* because it will trigger first group member first, we can figure it out in one pass from the first member */
 
 			if (convCmp_bitMask(btn_conv_buf[iii].onstate, valuebyte, btn_conv_buf[iii].index_start, btn_conv_buf[iii].index_end)) {
@@ -703,8 +701,7 @@ convCC_btn_getstates(Byte pbyte)
     CC_btnState = 0;
     /* if (CC_btnState == 0)           //if all the buttons are 0 (this is the first time program is loaded probably) */
     /* this loop uses the button buffer, the second one will use bit operations */
-    int i;
-    for (i = 0; i < number_of_button_params; i++)
+    for (unsigned int i = 0; i < number_of_button_params; i++)
 	if (btn_conv_buf[i].sx_param_number == pbyte) {
 	    /* its a param match, now check onstates */
 
@@ -823,8 +820,7 @@ Byte
 convBtnCountSaved()
 {
     Byte retval = 0;
-    int i;
-    for (i = 0; i < number_of_button_params; i++)
+    for (unsigned int i = 0; i < number_of_button_params; i++)
         if (btn_conv_buf[i].last_cc_value != 231)
             retval++;
     return retval;
@@ -835,9 +831,8 @@ MIDIPacket*
 convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
 {
     int packetcount = 1;	/* a multiplier for the interval */
-    int i;
 
-    for (i = 0 ; i < number_of_button_params; i++) {
+    for (unsigned int i = 0 ; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].last_cc_value != 231) {
             /* if this buffer member has been used at all */
             MIDIPacket pktToAdd;
@@ -901,8 +896,7 @@ init_button_buffer()
     if (verbose)
         printf("to load %d button parameters... \n", number_of_button_params);
 
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         /* fill in some of the buffer */
 
         char *p = NULL;		/* pointer for loading strings into the buffer */
@@ -965,8 +959,7 @@ int
 load_cc_ranges(struct btn_conversion_buffer *bcnv)
 /* subroutine for init_button_buffer to load the cc ranges properly using links nextmember and prevmember */
 {
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (bcnv[i].ingroup && bcnv[i].prevmember == NULL) {
             /* if it's the first member in a group, first get amount
 	       in group */
@@ -1019,8 +1012,7 @@ create_sx_param_range()
 /* this creates a struct to hold lastvalbytes for the sx host to figure out what button state has changed */
 {
     int lastparam = 0, count = 0;
-    int i;
-    for (i = 0; i < number_of_button_params; i++)
+    for (unsigned int i = 0; i < number_of_button_params; i++)
         /* cycle through and count unique sx param numbers */
         if (btn_conv_buf[i].sx_param_number != lastparam) {
             lastparam = btn_conv_buf[i].sx_param_number;
@@ -1042,8 +1034,7 @@ create_sx_param_range()
 
     if (verbose) {
         printf("Button param range numbers:\n");
-	int i;
-        for (i = 0; i < btn_sx_rangeamt; i++)
+        for (int i = 0; i < btn_sx_rangeamt; i++)
             printf("%d:0x%02X\n", i, btn_lastbyte[i].param);
     }
 }
@@ -1052,8 +1043,7 @@ create_sx_param_range()
 void
 link_btn_params()
 {
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].ingroup) {
             /* this should have subroutines that don't require things to be next to each other in the buffer to be linked */
             if (btn_conv_buf[i].group == btn_conv_buf[i - 1].group)
@@ -1085,8 +1075,7 @@ link_btn_params()
 void
 display_btns()
 {
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         printf("[%d]%s CC- %d SX- %d G- %d IG- %d OS- %d IS- %d IE- %d CCS- %d CCE- %d ",
 	       i,
 	       btn_conv_buf[i].paramname,
@@ -1145,8 +1134,7 @@ void
 show_btn_groups()
 {
     /* searches through the buffer and displays each grouped button organized by member */
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].ingroup && btn_conv_buf[i].prevmember == NULL) {
             /* this button is the first member in a group */
             int count = 0;
@@ -1188,8 +1176,7 @@ show_btn_groups()
 void
 display_button_states()
 {
-    int i;
-    for (i = 0; i < number_of_button_params; i++) {
+    for (unsigned int i = 0; i < number_of_button_params; i++) {
 	printf("%s | ", btn_conv_buf[i].paramname);
 	if (btn_conv_buf[i].ison)
 	    printf("ON\n");
