@@ -48,21 +48,20 @@ int reccount = 0;   		/* a counting var for recursive funx */
 int recsecondbyte = 0;      	/* counts bytes in the format string creator */
 
 
-void load_instrument_settings()
+void
+load_instrument_settings()
 {
     char *p;
     int *ip;
 
     conversionfile = fopen("conversion.txt", "r");
-    if (conversionfile == NULL)
-    {
+    if (conversionfile == NULL) {
         printf("Error: No conversion.txt file.\n");
         exit(1);
     }
 
     convGetDefaultSetting(DEFAULTS_SECTION_NAME, "TITLE", (void **)&p);
-    if (!strncpy(&defaults.title[0], p, strlen(p)))
-    {
+    if (!strncpy(&defaults.title[0], p, strlen(p))) {
         printf("Error: strncpy failed to copy %s\n", p);
         exit(1);
     }
@@ -88,8 +87,7 @@ void load_instrument_settings()
     reccount = 1;       	/* reccount will count spaces in this function to keep track of byte count. string starts w/ at least one byte */
 
     convSetSysexFormatString(p, strlen(p), sx_fstr);
-    if (verbose)
-    {
+    if (verbose) {
         printf("SYSEXSTRINGFORMAT = %s\n", p);
         printf("Parsed into heap as: ");
 	int i;
@@ -98,82 +96,67 @@ void load_instrument_settings()
         printf("\n");
     }
 
-    if (!create_cc_string())
-    {
+    if (!create_cc_string()) {
         printf("Error creating cc string\n");
         exit(1);
     }
 }
 
-int create_cc_string()
+int
+create_cc_string()
 {
     cc_fstr[0] = 0xB0 + (defaults.sendchannel - 1);
     return 1;
 }
 
-void convSetSysexFormatString(char *p, size_t len, Byte *fstr)
 /* parse the format string recursively, filling in the positions and stuff */
+void
+convSetSysexFormatString(char *p, size_t len, Byte *fstr)
 {
-    if (rec >= len)
-    {
+    if (rec >= len) {
         rec = 0;
         reccount = 0;
         /* cbyte = 0; */
         return;
-    }
-
-    else if (p[rec] == ' ')
-    {
+    } else if (p[rec] == ' ') {
         /* counts spaces */
         reccount++;
         recsecondbyte = 0;
-    }
 
-    else if (p[rec] == 'L' && p[rec - 1] == ' ')
-        /* if the nibble is on the left */
-    {
+    } else if (p[rec] == 'L' && p[rec - 1] == ' ') { /* if the nibble is on the left */
         defaults.channel_nibble_side = NIBBLE_POS_LEFT;
         defaults.sysex_channel_pos = reccount - 1;
         if (verbose)
             printf("channel nibble is on the left in byte %d\n", reccount);
         fstr[reccount - 1] = (defaults.sendchannel - 1) * 16; /* move it over a digit by multiplying by 16... */
         recsecondbyte = 1;
-    }
 
-    else if (p[rec] == 'L' && p[rec + 1] == ' ')
-    {
+    } else if (p[rec] == 'L' && p[rec + 1] == ' ') {
         defaults.channel_nibble_side = NIBBLE_POS_RIGHT;
         defaults.sysex_channel_pos = reccount - 1;
         if (verbose)
             printf("channel nibble is on the right in byte %d\n", reccount);
         fstr[reccount - 1] = defaults.sendchannel - 1; /* set the nibble on right side */
         recsecondbyte = 1;
-    }
 
-    else if (p[rec] == 'P' && p[rec + 1] == 'P')
-    {
+    } else if (p[rec] == 'P' && p[rec + 1] == 'P') {
         defaults.sysex_param_pos = reccount - 1;
 	/*  sx_param_pos = reccount; */
         if (verbose)
             printf("Parameter byte is %d\n", reccount);
         fstr[reccount - 1] = strtol("FF", NULL, 16);
         recsecondbyte = 1;
-    }
 
-    else if (p[rec] == 'V' && p[rec + 1] == 'V')
-    {
+    } else if (p[rec] == 'V' && p[rec + 1] == 'V') {
         defaults.sysex_value_pos = reccount - 1;
         if (verbose)
             printf("Value byte is %d\n", reccount);
         fstr[reccount - 1] = strtol("FF", NULL, 16);
         recsecondbyte = 1;
-    }
 
-    else
+    } else {
         /* this is just a regular char -- parse it and the next char */
-    {
-        if (!recsecondbyte)
-        {
+        if (!recsecondbyte) {
             fstr[reccount - 1] = (int)strtol(&p[rec], NULL, 16);
             recsecondbyte = 1;
         }

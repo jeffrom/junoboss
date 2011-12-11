@@ -42,14 +42,18 @@ int verbose = 0;
 int changedefaults = 0;
 
 
-static void cleanup() {
+static void
+cleanup()
+{
     MIDIClientDispose(client);
     free(fader_conv_buf);
     free(btn_conv_buf);
     free(btn_lastbyte);
 }
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[])
+{
     int c;
     while ((c = getopt(argc, argv, "hvd")) != -1) {
 	switch (c) {

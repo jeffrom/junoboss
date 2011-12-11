@@ -70,20 +70,18 @@ unsigned long long avg_fader_conv = 0;
 int avg_fader_count = 0;
 
 
-int convCC_SX_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
+int
+convCC_SX_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 {
     int cnvStatus = 0;
     /* lock the mutex */
     pthread_mutex_lock(&mtx);
 
     int i;
-    for (i = 0; i < number_of_fader_params; i++)
-    {
-        if (parambyte == fader_conv_buf[i].cc_param_number)
+    for (i = 0; i < number_of_fader_params; i++) {
+        if (parambyte == fader_conv_buf[i].cc_param_number) {
             /* this is a match, prepare the packet */
-        {
-            if (verbose)
-            {
+            if (verbose) {
                 printf("CC->SX [%s]: ", fader_conv_buf[i].paramname);
             }
             /* timing things */
@@ -112,12 +110,10 @@ int convCC_SX_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
             /* averaging */
             avg_fader_count++;
             avg_fader_conv = avg_fader_conv + duration;	/* when will this overflow? */
-            if (verbose)
-            {
+            if (verbose) {
                 printf("--> [%d] ", defs->sysex_strlen);
 		int i;
-                for (i = 0; i < defs->sysex_strlen; i++)
-                {
+                for (i = 0; i < defs->sysex_strlen; i++) {
                     if (i == defs->sysex_value_pos)
                         printf("%02d ", pktToSend->data[i]);
                     else
@@ -135,7 +131,8 @@ int convCC_SX_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
     return cnvStatus;
 }
 
-int convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
+int
+convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 {
     int cnvStatus = 0;
     mach_timebase_info_data_t info;
@@ -146,10 +143,8 @@ int convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
     pthread_mutex_lock(&mtx);
 
     int i;
-    for (i = 0; i < number_of_fader_params; i++)
-    {
-        if (fader_conv_buf[i].sx_param_number == parambyte)
-        {
+    for (i = 0; i < number_of_fader_params; i++) {
+        if (fader_conv_buf[i].sx_param_number == parambyte) {
             pktToSend->length = 3;
             pktToSend->timeStamp = mach_absolute_time();
             /* no midi channel support yet -- it should go to recvchannel */
@@ -168,12 +163,10 @@ int convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
             avg_fader_count++;
             avg_fader_conv = avg_fader_conv + duration;	/* when will this overflow? */
 
-            if (verbose)
-            {
+            if (verbose) {
                 printf("[%s] --> CC:          ", fader_conv_buf[i].paramname);
 		int i;
-                for (i = 0; i < 3; i++)
-                {
+                for (i = 0; i < 3; i++) {
                     if (i != 0)
                         printf("%02d ", pktToSend->data[i]);
                     else
@@ -192,51 +185,53 @@ int convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 }
 
 /* functions for dumping state */
-Byte convFaderCountSaved()
+Byte
+convFaderCountSaved()
 {
     Byte retval = 0;
     int i;
     for (i = 0; i < number_of_fader_params; i++)
 	if (fader_conv_buf[i].last_value_byte != 231) /* 231 is the initialization number. max value in midi is 127 */
-        retval++;
+	    retval++;
     return retval;
 }
 
 /* this may need some time parameter to sync with the button dump */
-MIDIPacket *convFaderDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
+MIDIPacket*
+convFaderDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
 {
     int packetcount = 1;	/* a multiplier for the interval */
 
     int i;
-    for (i = 0; i < number_of_fader_params; i++)
-    {
-        if (fader_conv_buf[i].last_value_byte != 231)
-            /* if the fader has been used at all */
-        {
-            /* add it to the packetlist */
+    for (i = 0; i < number_of_fader_params; i++) {
+        if (fader_conv_buf[i].last_value_byte != 231) {
+            /* if the fader has been used at all add it to the
+	       packetlist */
             MIDIPacket pktToAdd;
             pktToAdd.length = 3;
             pktToAdd.data[0] = CC_MSG_BYTE + (defs->recvchannel - 1);
             pktToAdd.data[1] = fader_conv_buf[i].cc_param_number;
             pktToAdd.data[2] = fader_conv_buf[i].last_value_byte;
             pktToAdd.timeStamp = mach_absolute_time(); /* this needs to be set on an interval * count */
+
             /* to convert mach_absolute_time to nanos */
             mach_timebase_info_data_t info;
             mach_timebase_info(&info);
+
             /* convert to nanos */
             pktToAdd.timeStamp *= info.numer;
             pktToAdd.timeStamp /= info.denom;
+
             /* calculate the scheduling based on interval */
             pktToAdd.timeStamp = pktToAdd.timeStamp + ((5 NS_TO_MS) * packetcount) + 30 NS_TO_MS; /* 5 will be replaced with defs->dump_interval */
-	    /* this is correct calculation though */
-            packetcount++;
+            packetcount++;    /* this is correct calculation though */
 
             pkt = MIDIPacketListAdd(pktList,
-                                     sizeof(*pktList),
-                                     pkt,
-                                     pktToAdd.timeStamp,
-                                     pktToAdd.length,
-                                     &pktToAdd.data[0]);
+				    sizeof(*pktList),
+				    pkt,
+				    pktToAdd.timeStamp,
+				    pktToAdd.length,
+				    &pktToAdd.data[0]);
             *count = *count + 1;
         }
     }
@@ -245,7 +240,8 @@ MIDIPacket *convFaderDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *co
 }
 
 /* initialization of the buffer */
-void init_fader_buffer()
+void
+init_fader_buffer()
 {
 #ifdef TIMING
     /* timing stuff, just to test it out for the message relay */
@@ -257,8 +253,7 @@ void init_fader_buffer()
 
     /* first open the file */
     conversionfile = fopen("conversion.txt", "r");
-    if (conversionfile == NULL)
-    {
+    if (conversionfile == NULL) {
         printf("Error: No conversion.txt file.\n");
         exit(1);
     }
@@ -278,16 +273,14 @@ void init_fader_buffer()
         printf("to load %d fader parameters... \n", number_of_fader_params);
 
     int i;
-    for (i = 0; i < number_of_fader_params; i++)
-    {
+    for (i = 0; i < number_of_fader_params; i++) {
         char *p = NULL;        	/* points to the var linked to the char array for paramname */
         Byte *pb = NULL;
         token = NULL;
         convGetNextProperty(FADER_SECTION_NAME, (void **)&p); /* load param name */
         strncpy(&fader_conv_buf[i].paramname[0], p, strlen(p));
         /* err checking -- maybe not neccesary */
-        if (!p)
-        {
+        if (!p) {
             printf("pointer to paramname == NULL\n");
             exit(1);
         }

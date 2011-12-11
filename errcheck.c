@@ -17,7 +17,8 @@
 
 void errCheck(OSStatus err);
 
-void errCheck(OSStatus err)
+void
+errCheck(OSStatus err)
 {
     if (err != noErr)
     {
