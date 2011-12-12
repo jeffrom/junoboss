@@ -35,8 +35,12 @@ extern void display_button_states();
 
 extern Byte convFaderCountSaved();
 extern Byte convBtnCountSaved();
-extern MIDIPacket *convFaderDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count);
-extern MIDIPacket *convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count);
+extern MIDIPacket *convFaderDumpSaved(MIDIPacket *pkt,
+				      MIDIPacketList *pktList,
+				      int *count);
+extern MIDIPacket *convBtnDumpSaved(MIDIPacket *pkt,
+				    MIDIPacketList *pktList,
+				    int *count);
 
 
 /* local functions */
@@ -47,11 +51,16 @@ void send_testnote();
 void get_dests();
 void convDumpState();
 
-void convReadProcCCHost(const MIDIPacketList *packetList, void *rpRefCon, void *rpHostSrcRefCon);
-MIDIPacket *convCCKill(const MIDIPacketList *pktList, MIDIPacketList *newList);
+void convReadProcCCHost(const MIDIPacketList *packetList,
+			void *rpRefCon,
+			void *rpHostSrcRefCon);
+MIDIPacket *convCCKill(const MIDIPacketList *pktList,
+		       MIDIPacketList *newList);
 int throttle_cc_faders(MIDIPacket *pkt, MIDIPacket *lastpkt);
 
-void convReadProcSXHost(const MIDIPacketList *packetList, void *rpRefCon, void *rpSynthSrcRefCon);
+void convReadProcSXHost(const MIDIPacketList *packetList,
+			void *rpRefCon,
+			void *rpSynthSrcRefCon);
 MIDIPacket *convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList);
 
 
@@ -91,7 +100,7 @@ listen()
 	}
 
 	if (c == 's' || c == 'S') {
-	    /* convDumpState(); */
+	    convDumpState();
 	}
 
 	if (c == 't' || c == 'T') {
@@ -99,8 +108,8 @@ listen()
 	}
 
 	if (c == 'b' || c == 'B') {
-	    /* if (verbose) */
-	    /* display_button_states(); */
+	    if (verbose)
+		display_button_states();
 	}
     }
 }
@@ -110,10 +119,13 @@ convReadProcCCHost(const MIDIPacketList *ccrpacketList, void *rpRefCon, void *rp
 {
     /* MIDIPacket *ccpkt = (MIDIPacket *)ccrpacketList->packet; */
     MIDIPacketList clnccPacketList;
-    /* first filter out any messages coming from the other readproc (ones going toward recvchannel) */
-    /*  (this might need to be mutexed because it uses one of the parameters of the threads proc..?) */
-    MIDIPacket *ccpkt = convCCKill(ccrpacketList, &clnccPacketList); /* filter out converted packets into clnccPacketList */
-    /* ccpkt now points to the first packet of the cleaned packetlist */
+    /* first filter out any messages coming from the other readproc
+       (ones going toward recvchannel) (this might need to be mutexed
+       because it uses one of the parameters of the threads
+       proc..?) */
+    MIDIPacket *ccpkt = convCCKill(ccrpacketList, &clnccPacketList);
+    /* ccpkt now points to the first packet of the cleaned
+     * packetlist */
     if (ccpkt == NULL)
         /* return if there's only packets to convert in this list */
         return;
@@ -121,21 +133,23 @@ convReadProcCCHost(const MIDIPacketList *ccrpacketList, void *rpRefCon, void *rp
     MIDIPacketList ccpktListToSend;
     MIDIPacket *ccspkt = MIDIPacketListInit(&ccpktListToSend);
     for (unsigned int i = 0; i < (clnccPacketList.numPackets + 1); i++) {
-        if (ccpkt->data[0] == (CC_MSG_BYTE + (defs->sendchannel - 1))) {/* CC message--checks if the packet is for sendchannel */
-            /* recvchannel messages should just get passed through to the host... */
+        if (ccpkt->data[0] == (CC_MSG_BYTE + (defs->sendchannel - 1))) {
+            /* CC message--checks if the packet is for sendchannel.
+	       recvchannel messages should just get passed through to
+	       the host... */
 
-            /* throttle cc packets (don't add it to the packetlist if the last packet had the same value) */
+            /* throttle cc packets (don't add it to the packetlist if
+	     * the last packet had the same value) */
             if (ccpkt->data[2] == lastCCpkt.data[defs->sysex_value_pos]) {
-                /* this just dumps repetitive packets, it does not replace variable-based throttling */
+                /* this just dumps repetitive packets, it does not
+		 * replace variable-based throttling */
                 goto dropthisccpacket;
             }
 
-            /* check for fader/button param -- mutexs are in the functions */
+            /* check for fader/button param -- mutexs are in the
+	     * functions */
             if (!convCC_SX_fader(ccpkt->data[1], ccpkt->data[2], &ccpktToSend)) {
                 if (!convCC_SX_btn(ccpkt->data[1], ccpkt->data[2], &ccpktToSend)) {
-                    /* if neither one of these has to happen return */
-                    /* printf("\n"); */
-                    /* return; */
                     goto dropthisccpacket;
                 }
                 /*else
@@ -154,10 +168,16 @@ convReadProcCCHost(const MIDIPacketList *ccrpacketList, void *rpRefCon, void *rp
         } else {    		/* just send it along */
             ccpktToSend = *ccpkt;
         }
-        ccspkt = MIDIPacketListAdd(&ccpktListToSend, sizeof(ccpktListToSend), ccspkt, ccpktToSend.timeStamp, ccpktToSend.length, &ccpktToSend.data[0]);
+        ccspkt = MIDIPacketListAdd(&ccpktListToSend,
+				   sizeof(ccpktListToSend),
+				   ccspkt,
+				   ccpktToSend.timeStamp,
+				   ccpktToSend.length,
+				   &ccpktToSend.data[0]);
     dropthisccpacket:
         ccpkt = MIDIPacketNext(ccpkt);
     }
+
     /* make sure outPort is thread-synced */
     pthread_mutex_lock(&mtx);
     err = MIDISend(outPort, epSynthDest, &ccpktListToSend);
@@ -175,7 +195,9 @@ convCCKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
     for (unsigned int i = 0; i < pktList->numPackets; i++)
         if (pktList->packet[i].data[0] == CC_MSG_BYTE + (defs->recvchannel - 1))
             count++;
-    int retval = pktList->numPackets - count; /* number of packets in the list - number of removed packets */
+
+    /* number of packets in the list - number of removed packets */
+    int retval = pktList->numPackets - count;
     if (retval != 0) {    	/* if there is a new packetlist to create */
         /* setup the new packet list */
 
@@ -187,7 +209,8 @@ convCCKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
 
         for (unsigned int i = 0; i < pktList->numPackets; i++) {
             if (pktList->packet[i].data[0] != CC_MSG_BYTE + (defs->recvchannel - 1)) {
-                /* if this is a cc packet but is from the conversion proc (sending to recv channel), don't add it */
+                /* if this is a cc packet but is from the conversion
+		 * proc (sending to recv channel), don't add it */
 
                 if (pktList->packet[i].length != 0 /*&& pktList->packet[i].length <= 3*/) {
                     ppkt->length = pktList->packet[i].length;
@@ -222,41 +245,70 @@ throttle_cc_faders(MIDIPacket *pkt, MIDIPacket *lastpkt)
     return retval;
 }
 
+
+/*
+ * TODO: This function (and the CC version of this function) is a
+ * callback on a separate thread. There needs to be a mutex or
+ * sephamore to protect any shared data in any function called by this
+ * one or in the function itself.
+ */
 void
-convReadProcSXHost(const MIDIPacketList *sxrpacketList, void *rpSXRefCon, void *rpSynthSrcRefCon)
+convReadProcSXHost(const MIDIPacketList *sxrpacketList,
+		   void *rpSXRefCon,
+		   void *rpSynthSrcRefCon)
 {
-    /* MIDIPacket *sxpkt = (MIDIPacket *)sxrpacketList->packet; */
-    /* no throttling on this end... the juno takes care of that :D */
-    /* filter out messages from the converter (that are on sendchannel) */
+    /* MIDIPacket *sxpkt = (MIDIPacket *)sxrpacketList->packet; no
+        throttling on this end... the juno takes care of that :D .
+        filter out messages from the converter (that are on
+        sendchannel) */
     MIDIPacketList clnsxPacketList;
     /* might have to mutex this... */
-    MIDIPacket *sxpkt = convSXKill(sxrpacketList, &clnsxPacketList); /* filter out converted packets into clnsxPacketList */
-    /* sxpkt now points to the first packet of the cleaned packetlist */
+    MIDIPacket *sxpkt = convSXKill(sxrpacketList, &clnsxPacketList);
+    /* sxpkt now points to the first packet of the cleaned
+     * packetlist */
+
     if (sxpkt == NULL)
         /* return if there's only converted packets in this list */
         return;
+
     MIDIPacketList sxpktListToSend;
     MIDIPacket sxpktToSend;
     MIDIPacket *sxsppkt = MIDIPacketListInit(&sxpktListToSend);
     for (unsigned int i = 0; i < (clnsxPacketList.numPackets + 1); i++) {
+
         if (sxpkt->data[0] == SX_OPEN_BYTE
             && sxpkt->data[defs->sysex_channel_pos] == (defs->recvchannel - 1)) {
-            /* if it's sysex & on the recvchannel (5), this is a conversion message */
+            /* if it's sysex & on the recvchannel (5), this is a
+	     * conversion message */
 
-            if (!convSX_CC_fader(sxpkt->data[defs->sysex_param_pos], sxpkt->data[defs->sysex_value_pos], &sxpktToSend)) {
+            if (!convSX_CC_fader(sxpkt->data[defs->sysex_param_pos],
+				 sxpkt->data[defs->sysex_value_pos],
+				 &sxpktToSend)) {
                 /* if it's not a fader param check buttons */
 
-                if (!convSX_CC_btn(sxpkt->data[defs->sysex_param_pos], sxpkt->data[defs->sysex_value_pos], &sxpktToSend)) {
-                    /* there's nothing to convert... probably shouldn't even send it along if it got this far and doesn't get used */
+                if (!convSX_CC_btn(sxpkt->data[defs->sysex_param_pos],
+				   sxpkt->data[defs->sysex_value_pos],
+				   &sxpktToSend)) {
+                    /* there's nothing to convert... probably
+		     * shouldn't even send it along if it got this far
+		     * and doesn't get used */
                     goto dropthissxpacket;
                 }
             }
-        } else if (sxpkt->data[0] == SX_OPEN_BYTE && sxpkt->data[defs->sysex_channel_pos] == (defs->sendchannel - 1)) {
+        } else if (sxpkt->data[0] == SX_OPEN_BYTE &&
+		   sxpkt->data[defs->sysex_channel_pos] == (defs->sendchannel - 1)) {
             if (verbose)
                 printf("A converted packet got into the SYSEX conversion proc somehow\n");
             goto dropthissxpacket;
         }
-        sxsppkt = MIDIPacketListAdd(&sxpktListToSend, sizeof(sxpktListToSend), sxsppkt, sxpktToSend.timeStamp, sxpktToSend.length, &sxpktToSend.data[0]);
+
+        sxsppkt = MIDIPacketListAdd(&sxpktListToSend,
+				    sizeof(sxpktListToSend),
+				    sxsppkt,
+				    sxpktToSend.timeStamp,
+				    sxpktToSend.length,
+				    &sxpktToSend.data[0]);
+
     dropthissxpacket:
         sxpkt = MIDIPacketNext(sxpkt);
     }
@@ -266,8 +318,9 @@ convReadProcSXHost(const MIDIPacketList *sxrpacketList, void *rpSXRefCon, void *
     errCheck(err);
 }
 
-/* filters already converted messages out of the packetlist, returning 0 if it killed the whole packetlist, 1 if it didn't */
-/* if it doesn't kill the whole packetlist, it will replace it. */
+/* filters already converted messages out of the packetlist, returning
+ * 0 if it killed the whole packetlist, 1 if it didn't. if it doesn't
+ * kill the whole packetlist, it will replace it. */
 MIDIPacket*
 convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
 {
@@ -276,15 +329,19 @@ convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
         if (pktList->packet[i].data[0] == SX_OPEN_BYTE
             && pktList->packet[i].data[defs->sysex_channel_pos] == (defs->sendchannel - 1))
             count++;
-    int retval = pktList->numPackets - count; /* number of packets in the list - number of removed packets */
+
+    /* number of packets in the list - number of removed packets */
+    int retval = pktList->numPackets - count;
     if (retval != 0) {    	/* if there is a new packetlist to create */
         /* setup the new packet list */
 
         MIDIPacket *ppkt = MIDIPacketListInit(newList);
         for (unsigned int i = 0; i < pktList->numPackets; i++) {
-            /* if either it's not a sysex message at all or it is one not meant to be converted again */
+            /* if either it's not a sysex message at all or it is one
+	     * not meant to be converted again */
             if (pktList->packet[i].data[0] != SX_OPEN_BYTE) {
-                if (pktList->packet[i].length != 0) {		/* fill the packet and add it */
+                if (pktList->packet[i].length != 0) {
+		    /* fill the packet and add it */
                     ppkt->length = pktList->packet[i].length;
                     ppkt->timeStamp = pktList->packet[i].timeStamp;
 
@@ -330,7 +387,8 @@ convSXKill(const MIDIPacketList *pktList, MIDIPacketList *newList)
 void
 convDumpState()
 {
-    /* first count how many packets we're putting in this packetlist */
+    /* first count how many packets we're putting in this
+     * packetlist */
     pthread_mutex_lock(&mtx);
     Byte packetcount = convFaderCountSaved() + convBtnCountSaved();
     if (!packetcount) {
@@ -341,7 +399,8 @@ convDumpState()
     /* now create a packetlist with the correct size */
     MIDIPacketList pktList;
     /* pktList.numPackets = packetcount; */
-    /* unsigned long long timecount = mach_absolute_time() + 200000;            //how long is this? should be like 6ms ahead of now */
+    /* unsigned long long timecount = mach_absolute_time() +
+     * 200000; how long is this? should be like 6ms ahead of now */
     int count = 0;
 
     /* init the packetlist */
@@ -369,8 +428,8 @@ convDumpState()
         return;
     }
 
-    /* schedule the packetlist in increments */
-    /* send out the packetlist */
+    /* schedule the packetlist in increments
+     * send out the packetlist */
     err = MIDISend(outPort, epHostDest, &pktList);
     err = MIDISend(outPort, epHostDest, &BtnpktList);
     pthread_mutex_unlock(&mtx);
@@ -447,32 +506,51 @@ midi_init(int choose)
     /* set up destination endpoints... */
     get_dests();
     /* create client, output port */
+
     err = MIDIClientCreate(CFSTR("Junoboss Client"), NULL, NULL, &client);
     errCheck(err);
+
     err = MIDIOutputPortCreate(client, CFSTR("Junoboss Output"), &outPort);
     errCheck(err);
-    /* err = MIDIOutputPortCreate(client, CFSTR("Junoboss Output2"), &outPort); */
+
+    /* err = MIDIOutputPortCreate(client, CFSTR("Junoboss Output2"),
+     * &outPort); */
     /* errCheck(err); */
     /* create/connect input ports */
+
     /* first CC host */
-    /* err = MIDIDestinationCreate(client, CFSTR("Junoboss CC"), rpHost, rpHostConRef, (MIDIEndpointRef *)&inPort); */
-    err = MIDIInputPortCreate(client, CFSTR("Junoboss CC port"), convReadProcCCHost, NULL, &inPort);
+    /* err = MIDIDestinationCreate(client,
+       CFSTR("Junoboss CC"),
+       rpHost,
+       rpHostConRef,
+       (MIDIEndpointRef *)&inPort); */
+
+    err = MIDIInputPortCreate(client,
+			      CFSTR("Junoboss CC port"),
+			      convReadProcCCHost,
+			      NULL,
+			      &inPort);
     errCheck(err);
-    err = MIDIInputPortCreate(client, CFSTR("Junoboss SYSEX port"), convReadProcSXHost, &convReadProcSXHost, &inPort2);
+
+    err = MIDIInputPortCreate(client,
+			      CFSTR("Junoboss SYSEX port"),
+			      convReadProcSXHost,
+			      &convReadProcSXHost,
+			      &inPort2);
     errCheck(err);
+
     err = MIDIPortConnectSource(inPort, epHost, NULL);
     errCheck(err);
+
     err = MIDIPortConnectSource(inPort2, epSynth, NULL);
     errCheck(err);
 
     /* initialize mutex */
-    int err = pthread_mutex_init(&mtx, NULL);
-    if (err != 0)
-        /* error */
-	{
-	    printf("Error: pthreads failed to initialize a mutex\n");
-	    exit(1);
-	}
+    err = pthread_mutex_init(&mtx, NULL);
+    if (err != 0) { /* error */
+	printf("Error: pthreads failed to initialize a mutex\n");
+	exit(1);
+    }
 }
 
 void
@@ -484,6 +562,7 @@ get_dests()
     err = MIDIObjectGetStringProperty(epSynth, kMIDIPropertyName, &sname);
     errCheck(err);
     CFStringGetCString(sname, &csname[0], sizeof(csname), 0);
+
     for (unsigned int i = 0; i < numdests; i++) {
         MIDIEndpointRef ep = MIDIGetDestination(i);
         err = MIDIObjectGetStringProperty(ep, kMIDIPropertyName, &dname);
@@ -495,14 +574,17 @@ get_dests()
             break;
         }
     }
+
     err = MIDIObjectGetStringProperty(epHost, kMIDIPropertyName, &sname);
     errCheck(err);
     CFStringGetCString(sname, &csname[0], sizeof(csname), 0);
+
     for (i = 0; i < numdests; i++) {
         MIDIEndpointRef ep = MIDIGetDestination(i);
         err = MIDIObjectGetStringProperty(ep, kMIDIPropertyName, &dname);
         errCheck(err);
         CFStringGetCString(dname, &cdname[0], sizeof(cdname), 0);
+
         if (!strncmp(&cdname[0], &csname[0], strlen(cdname))) {
             /* printf("found matching dest, %s\n", cdname); */
             epHostDest = ep;
@@ -510,6 +592,7 @@ get_dests()
             break;
         }
     }
+
     CFRelease(sname);
 }
 
@@ -520,14 +603,17 @@ send_testnote()
     pktListToSend.numPackets = 1;
     testnoteon->timeStamp = 0; /* send now */
     testnoteon->length = 3;
-    /* testnoteon->data[3] = {0x90, 60, 64};			noteon, c, 64v -- fails */
+    /* testnoteon->data[3] = {0x90, 60, 64};
+     * noteon, c, 64v -- *
+     * fails */
     testnoteon->data[0] = 0x90 + (defs->sendchannel - 1); /* this is a note on message */
     testnoteon->data[1] = 60; /* C */
     testnoteon->data[2] = 64; /* half velocity */
 
     printf("Sending test note...\n");
     MIDISend(outPort, epSynthDest, &pktListToSend);
-    MIDIPacket* testnoteoff = &pktListToSend.packet[0]; /* = MIDIPacketNext(testnoteoff); */
+
+    MIDIPacket* testnoteoff = &pktListToSend.packet[0];
     testnoteoff->timeStamp = mach_absolute_time() + 2000000000;
     testnoteoff->length = 3;
     testnoteoff->data[0] = 0x80 + (defs->sendchannel - 1); /* note off */

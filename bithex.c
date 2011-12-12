@@ -2,7 +2,6 @@
     junoboss
 
     Created by Jeffrey Martin on 3/14/11.
-    Copyright 2011 __MyCompanyName__. All rights reserved.
 
     this contains bit, nibble, and hex operations that are too complicated to do with a macro
 */

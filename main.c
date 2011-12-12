@@ -65,7 +65,7 @@ main(int argc, char *argv[])
 	    break;
 	case 'h':
 	default:
-	    printf("Usage: junoboss [-d] [-v]\n[-d] | change default interfaces\n[-v] | verbose (debug) mode\n");
+	    printf("Usage: junoboss [-d] [-v]\n    [-d] | change default interfaces\n    [-v] | verbose (debug) mode\n");
 	    exit(0);
 	}
     }
@@ -93,3 +93,4 @@ main(int argc, char *argv[])
 
     return 0;
 }
+

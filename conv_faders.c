@@ -4,7 +4,6 @@
 
   Created by Jeffrey Martin on 3/14/11.
 
-
   this contains functions that load the fader conversion buffer and do packet interpreting and building with it
 */
 
@@ -144,7 +143,8 @@ convSX_CC_fader(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
         if (fader_conv_buf[i].sx_param_number == parambyte) {
             pktToSend->length = 3;
             pktToSend->timeStamp = mach_absolute_time();
-            /* no midi channel support yet -- it should go to recvchannel */
+            /* no midi channel support yet -- it should go to
+	     * recvchannel */
             pktToSend->data[0] = CC_MSG_BYTE + (defs->recvchannel - 1);
             pktToSend->data[1] = fader_conv_buf[i].cc_param_number;
             pktToSend->data[2] = valuebyte;
@@ -187,7 +187,9 @@ convFaderCountSaved()
 {
     Byte retval = 0;
     for (unsigned int i = 0; i < number_of_fader_params; i++)
-	if (fader_conv_buf[i].last_value_byte != 231) /* 231 is the initialization number. max value in midi is 127 */
+	/* 231 is the initialization number. max value in midi is
+	 * 127 */
+	if (fader_conv_buf[i].last_value_byte != 231)
 	    retval++;
     return retval;
 }
@@ -284,7 +286,9 @@ init_fader_buffer()
         convGetNextProperty(FADER_SECTION_NAME, (void **)&pb); /* load sysex param number */
         fader_conv_buf[i].sx_param_number = *pb;
         fader_conv_buf[i].last_value_byte = 231; /* a number it will never get, just to check state later */
-        /* printf("%s - %d - %d\n", fader_conv_buf[i].paramname, fader_conv_buf[i].cc_param_number, fader_conv_buf[i].sx_param_number); */
+        /* printf("%s - %d - %d\n", fader_conv_buf[i].paramname,
+	 * fader_conv_buf[i].cc_param_number,
+	 * fader_conv_buf[i].sx_param_number); */
     }
     fclose(conversionfile);
 

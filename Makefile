@@ -1,5 +1,5 @@
 CC=clang
-FLAGS=-Wall -Wextra
+FLAGS=-Wall -Wextra -ggdb
 FEXTRA=-Wl,-dead_strip -framework CoreMIDI -framework CoreFoundation
 CFLAGS=-c -std=c90 -ansi
 PROGRAM=junoboss

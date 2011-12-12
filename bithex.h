@@ -3,7 +3,6 @@
   junoboss
 
   Created by Jeffrey Martin on 3/14/11.
-  Copyright 2011 __MyCompanyName__. All rights reserved.
 
   this contains bit macros and stuff to determine and set button states, etc
 */

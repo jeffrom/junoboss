@@ -1,7 +1,7 @@
 ;This is the conversion file that stores the info for whatever instrument.
 ;The format is <PARAMETER TITLE> = <CC#>, <Param #>
 ;SYSEX STRINGS have a special little format -- L for midi channel, P for parameter number (sysex functions for knobs usually do it this way), V for value of parameter to send (last byte of a CC msg)
-;Example: LFO Rate = 14, 00 
+;Example: LFO Rate = 14, 00
 ;SYSEXSTRINGFORMAT="F0 41 32 0L PP VV F7"
 
 [CONVERT_START]

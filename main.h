@@ -5,6 +5,9 @@
    This is where the defines for basically the entire project will go, except for the ones in bithex.h
 */
 
+#define TRUE                    1
+#define FALSE                   0
+
 #define CONV_MAX_STRLEN         24
 #define CONV_PARAMNAME_MAXLEN   24
 #define CONV_SYNTHNAME_MAXLEN   36

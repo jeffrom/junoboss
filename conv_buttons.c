@@ -17,14 +17,12 @@
 #include <mach/mach_time.h>
 #include <pthread.h>
 
-
 #include "main.h"
 #include "bithex.h"
 #include "settings.h"
 
 
 struct btn_conversion_buffer {
-
     char paramname[CONV_PARAMNAME_MAXLEN]; /* the parameter's name */
     Byte cc_param_number;		   /* cc parameter number */
     Byte sx_param_number;		   /* sysex parameter number */
@@ -38,9 +36,8 @@ struct btn_conversion_buffer {
     Byte cc_value_range_start:7; /* max is 127, just like a cc value byte */
     Byte cc_value_range_end:7;
     Byte last_cc_value;		/* used for decreasing time to check button states */
-    struct btn_conversion_buffer *prevmember; /* pointers to the previous and next button group member */
+    struct btn_conversion_buffer *prevmember;
     struct btn_conversion_buffer *nextmember;
-
 } *btn_conv_buf;
 
 struct btn_lastbyte_index {
@@ -67,9 +64,18 @@ int convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend);
 Byte convSX_btn_getstates(Byte parambyte, Byte valuebyte);
 Byte convGetCCValueByte(struct btn_conversion_buffer *pbuf, Byte sxValByte);
 Byte convCC_btn_getstates(Byte pbyte);
-Byte convSXAppendGroupPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte *loc);
-Byte convSXAppendNormPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte *loc);
-Byte convSXAppendSpecPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, struct btn_conversion_buffer *pob, Byte *loc);
+
+Byte convSXAppendGroupPacket(MIDIPacket *pkt,
+			     struct btn_conversion_buffer *pb,
+			     Byte *loc);
+Byte convSXAppendNormPacket(MIDIPacket *pkt,
+			    struct btn_conversion_buffer *pb,
+			    Byte *loc);
+Byte convSXAppendSpecPacket(MIDIPacket *pkt,
+			    struct btn_conversion_buffer *pb,
+			    struct btn_conversion_buffer *pob,
+			    Byte *loc);
+
 Byte convSX_GroupBtnOn(struct btn_conversion_buffer *pb);
 
 /* for dumping state */
@@ -109,49 +115,60 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 
     pthread_mutex_lock(&mtx);
     for (unsigned int i = 0; i < number_of_button_params; i++) {
-        if (btn_conv_buf[i].cc_param_number == parambyte)
-            /* this is a cc param match -- now check for behavior(groups/non-group/special) */
-        {
-            sxparamtosend = btn_conv_buf[i].sx_param_number; /* now we have enough info to fill in which param number in the string */
+        if (btn_conv_buf[i].cc_param_number == parambyte) {
+            /* this is a cc param match -- now check for
+	     * behavior(groups/non-group/special). now we have enough
+	     * info to fill in which param number in the string */
+            sxparamtosend = btn_conv_buf[i].sx_param_number;
+
             /* save state */
             btn_conv_buf[i].last_cc_value = valuebyte;
-            if (btn_conv_buf[i].ingroup)
+            if (btn_conv_buf[i].ingroup) {
+
                 /*  this is a group button - cycle through group
 		    members checking if the valuebyte fits.  right
 		    now, this will always trigger on the first group
-		    member. */
-            {
-                /* create a pointer to cycle through group members */
+		    member.
+		    -- create a pointer to cycle through group members */
+
                 struct btn_conversion_buffer *pb = &btn_conv_buf[i];
                 while (pb->prevmember != NULL || pb->nextmember != NULL) {
                     /* cycle through group members */
                     if (btn_conv_buf[i].group == pb->group) {
-                        /* if this member is in the same group as the one we're checking */
+                        /* if this member is in the same group as the
+			 * one we're checking */
 
-                        if (valuebyte >= pb->cc_value_range_start && valuebyte <= pb->cc_value_range_end) {
+                        if (valuebyte >= pb->cc_value_range_start &&
+			    valuebyte <= pb->cc_value_range_end) {
                             /* finally, a match check if it's already
 			       on, if it's not, turn it on */
                             if (!pb->ison) {
-                                cnvStatus = conv_BtnOn(pb, &valbytetosend); /* this will set cnvStatus to 1 if it writes stuff */
+				/* this will set cnvStatus to 1 if it writes stuff */
+                                cnvStatus = conv_BtnOn(pb, &valbytetosend);
                                 if (verbose)
                                     printf("CC->SX [%s]: ", pb->paramname);
                                 goto cc_sx_preppacket; /* get out of this loop */
                             } else
-				goto cc_sx_preppacket;	/* we can return 0 now, there's nothing to do */
+				/* we can return 0 now, there's nothing to do */
+				goto cc_sx_preppacket;
                         } else
-                            /* this one's not a match -- set pb to pb->nextmember */
+                            /* this one's not a match -- set pb to
+			     * pb->nextmember */
                             if (pb->nextmember != NULL)
                                 pb = pb->nextmember;
+
                     } else {
-                        /* we've been led astray -- this is no longer a group member we're checking */
+                        /* we've been led astray -- this is no longer
+			 * a group member we're checking */
                         break;
                     }
                 }
             } else {
                 /* not in a group */
-                if (btn_conv_buf[i].nextmember != NULL && btn_conv_buf[i].prevmember == NULL)
-                    /* this will trigger on the first special group member */
-		{   /* cycle through all the members then break this thang. */
+                if (btn_conv_buf[i].nextmember != NULL &&
+		    btn_conv_buf[i].prevmember == NULL) {
+                    /* this will trigger on the first special group member
+		     * cycle through all the members then break this thang. */
                     struct btn_conversion_buffer *bp = &btn_conv_buf[i];
                     /* check values */
                     if (valuebyte >= 0 && valuebyte <= bp->cc_value_range_start) {
@@ -172,7 +189,8 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                         break;
                     }
 
-                    if (valuebyte > bp->cc_value_range_start && valuebyte <= bp->nextmember->cc_value_range_start) {
+                    if (valuebyte > bp->cc_value_range_start &&
+			valuebyte <= bp->nextmember->cc_value_range_start) {
                         /* this is position 1 (pulse on saw off) */
 
                         if (!bp->ison) {
@@ -190,7 +208,8 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                         break;
                     }
 
-                    if (valuebyte > bp->nextmember->cc_value_range_start && valuebyte <= bp->cc_value_range_end) {
+                    if (valuebyte > bp->nextmember->cc_value_range_start &&
+			valuebyte <= bp->cc_value_range_end) {
                         /* position 2 -- (pulse off saw on) */
 
                         if (bp->ison) {
@@ -226,8 +245,10 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                     }
                 }
 
-                if (btn_conv_buf[i].nextmember == NULL && btn_conv_buf[i].prevmember == NULL) {
-                    /* not in a group or a special group (0-63 == off, 64-127 == on) */
+                if (btn_conv_buf[i].nextmember == NULL &&
+		    btn_conv_buf[i].prevmember == NULL) {
+                    /* not in a group or a special group (0-63 == off,
+		     * 64-127 == on) */
 
                     if (valuebyte < 64) {
                         /* off */
@@ -255,12 +276,14 @@ convCC_SX_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 cc_sx_preppacket:
 
     if (cnvStatus) {
-        /* if cnvStatus == 1, we know we have a button to turn on that isn't on now */
+        /* if cnvStatus == 1, we know we have a button to turn on that
+	 * isn't on now */
 
         pktToSend->length = defs->sysex_strlen;
         for (unsigned int i = 0; i < pktToSend->length; i++)
             if (i != defs->sysex_param_pos && i != defs->sysex_value_pos)
                 pktToSend->data[i] = sx_fstr[i];
+
         pktToSend->data[defs->sysex_param_pos] = sxparamtosend;
         pktToSend->data[defs->sysex_value_pos] = valbytetosend;
         pktToSend->timeStamp = mach_absolute_time();
@@ -317,7 +340,9 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
     Byte i;
     for (i = 0; i < btn_sx_rangeamt; i++) {
         if (parambyte == btn_lastbyte[i].param) {
-            rangei = i;		/* now rangei is the index number for the appropriate param in the lastbyte struct */
+            rangei = i;
+	    /* now rangei is the index number for the appropriate
+	     * param in the lastbyte struct */
             break;
         }
     }
@@ -339,9 +364,11 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
 	    indexrange[rangecount + 1] = 9;	/* this will be for error checking */
             rangecount++;
         }
-    /* if there are multiple changes, try stuffing it all into one MIDIPacket :) */
+    /* if there are multiple changes, try stuffing it all into one
+     * MIDIPacket :) */
     /* iterate through changesbyte */
-    /* printf("Received these change requests from param # %02X:\n", btn_lastbyte[rangei].param); */
+    /* printf("Received these change requests from param # %02X:\n",
+     * btn_lastbyte[rangei].param); */
     /* display_bits(valuebyte); */
     /* printf("bit locations with a \"1\" will be changed:\n"); */
     /* display_bits(changesbyte); */
@@ -350,17 +377,21 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
         /* iterate through changebyte */
 
         if (GET_BIT(changesbyte, i)) {
-            /* this is a change -- find the btn_conv member, update state, and append a packet */
+            /* this is a change -- find the btn_conv member, update
+	     * state, and append a packet */
 
             /* first locate the buffer member by index number */
 	    Byte ii;
             for (ii = 0; ii < number_of_button_params; ii++) {
-                if (btn_conv_buf[ii].index_start == i
-                    && btn_conv_buf[ii].index_end == 0
-                    && btn_conv_buf[ii].sx_param_number == btn_lastbyte[rangei].param) {
-                    /* this will capture any non groups bitmask--check for special group and update state accordingly */
+                if (btn_conv_buf[ii].index_start == i &&
+                    btn_conv_buf[ii].index_end == 0 &&
+                    btn_conv_buf[ii].sx_param_number == btn_lastbyte[rangei].param) {
+                    /* this will capture any non groups bitmask--check
+		     * for special group and update state
+		     * accordingly */
 
-                    if (btn_conv_buf[ii].nextmember == NULL && btn_conv_buf[ii].prevmember == NULL) {
+                    if (btn_conv_buf[ii].nextmember == NULL &&
+			btn_conv_buf[ii].prevmember == NULL) {
                         /* normal button -- just flip the state --
 			   lastbyte should keep it from repeating */
                         FLP_BIT(btn_conv_buf[ii].ison, 0);
@@ -369,63 +400,78 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                         /* save state */
                         btn_conv_buf[ii].last_cc_value = pktToSend->data[pktLoc - 1];
                         if (verbose)
-                            printf("SX->CC: %s(%d) --> %02X %02d %02d\n", btn_conv_buf[ii].paramname
-                                   , btn_conv_buf[ii].ison
-                                   , pktToSend->data[pktLoc - 3]
-                                   , pktToSend->data[pktLoc - 2]
-                                   , pktToSend->data[pktLoc - 1]);
-			/* now special group members - will trigger on first member first */
+                            printf("SX->CC: %s(%d) --> %02X %02d %02d\n",
+				   btn_conv_buf[ii].paramname,
+				   btn_conv_buf[ii].ison,
+				   pktToSend->data[pktLoc - 3],
+				   pktToSend->data[pktLoc - 2],
+				   pktToSend->data[pktLoc - 1]);
+			/* now special group members - will trigger on
+			 * first member first */
                     } else {
-			/* check for next/prevmember & corresponding changebyte index no. & ison */
-                        if (btn_conv_buf[ii].nextmember != NULL
-                            && !btn_conv_buf[ii].nextmember->group
-                            && GET_BIT(changesbyte, btn_conv_buf[ii].nextmember->index_start)) {
+			/* check for next/prevmember & corresponding
+			 * changebyte index no. & ison */
+                        if (btn_conv_buf[ii].nextmember != NULL &&
+                            !btn_conv_buf[ii].nextmember->group &&
+                            GET_BIT(changesbyte, btn_conv_buf[ii].nextmember->index_start)) {
                             /* flip both */
 
                             FLP_BIT(btn_conv_buf[ii].ison, 0);
                             FLP_BIT(btn_conv_buf[ii].nextmember->ison, 0);
-                            convSXAppendSpecPacket(pktToSend, &btn_conv_buf[ii], btn_conv_buf[ii].nextmember, &pktLoc);
+                            convSXAppendSpecPacket(pktToSend,
+						   &btn_conv_buf[ii],
+						   btn_conv_buf[ii].nextmember,
+						   &pktLoc);
                             /* save state */
                             btn_conv_buf[ii].last_cc_value = pktToSend->data[pktLoc - 1];
                             if (verbose)
-                                printf("SX->CC: %s(%d)|%s(%d) --> %02X %02d %02d\n"
-                                       , btn_conv_buf[ii].paramname
-                                       , btn_conv_buf[ii].ison
-                                       , btn_conv_buf[ii].nextmember->paramname
-                                       , btn_conv_buf[ii].nextmember->ison
-                                       , pktToSend->data[pktLoc - 3]
-                                       , pktToSend->data[pktLoc - 2]
-                                       , pktToSend->data[pktLoc - 1]);
-                        } else if (btn_conv_buf[ii].nextmember != NULL
-				   && !btn_conv_buf[ii].nextmember->group
-				   && !GET_BIT(changesbyte, btn_conv_buf[ii].nextmember->index_start)) {
+                                printf("SX->CC: %s(%d)|%s(%d) --> %02X %02d %02d\n",
+                                       btn_conv_buf[ii].paramname,
+                                       btn_conv_buf[ii].ison,
+                                       btn_conv_buf[ii].nextmember->paramname,
+                                       btn_conv_buf[ii].nextmember->ison,
+                                       pktToSend->data[pktLoc - 3],
+                                       pktToSend->data[pktLoc - 2],
+                                       pktToSend->data[pktLoc - 1]);
+                        } else if (btn_conv_buf[ii].nextmember != NULL &&
+				   !btn_conv_buf[ii].nextmember->group &&
+				   !GET_BIT(changesbyte, btn_conv_buf[ii].nextmember->index_start)) {
                             /* flip 1 (pulse), dont flip 2 (saw) */
 
                             FLP_BIT(btn_conv_buf[ii].ison, 0);
-                            convSXAppendSpecPacket(pktToSend, &btn_conv_buf[ii], btn_conv_buf[ii].nextmember, &pktLoc);
+                            convSXAppendSpecPacket(pktToSend,
+						   &btn_conv_buf[ii],
+						   btn_conv_buf[ii].nextmember,
+						   &pktLoc);
+
                             /* save state */
                             btn_conv_buf[ii].last_cc_value = pktToSend->data[pktLoc - 1];
                             if (verbose)
-                                printf("SX->CC: %s(%d) --> %02X %02d %02d\n", btn_conv_buf[ii].paramname
-                                       , btn_conv_buf[ii].ison
-                                       , pktToSend->data[pktLoc - 3]
-                                       , pktToSend->data[pktLoc - 2]
-                                       , pktToSend->data[pktLoc - 1]);
-                        } else if (btn_conv_buf[ii].prevmember != NULL
-				   && !btn_conv_buf[ii].prevmember->group
-				   && !GET_BIT(changesbyte, btn_conv_buf[ii].prevmember->index_start)) {
+                                printf("SX->CC: %s(%d) --> %02X %02d %02d\n",
+				       btn_conv_buf[ii].paramname,
+                                       btn_conv_buf[ii].ison,
+                                       pktToSend->data[pktLoc - 3],
+                                       pktToSend->data[pktLoc - 2],
+                                       pktToSend->data[pktLoc - 1]);
+
+                        } else if (btn_conv_buf[ii].prevmember != NULL &&
+				   !btn_conv_buf[ii].prevmember->group &&
+				   !GET_BIT(changesbyte, btn_conv_buf[ii].prevmember->index_start)) {
                             /* dont flip 1 (pulse), flip 2 (saw) */
 
                             FLP_BIT(btn_conv_buf[ii].ison, 0);
-                            convSXAppendSpecPacket(pktToSend, btn_conv_buf[ii].prevmember, &btn_conv_buf[ii], &pktLoc);
+                            convSXAppendSpecPacket(pktToSend,
+						   btn_conv_buf[ii].prevmember,
+						   &btn_conv_buf[ii], &pktLoc);
                             /* save state */
                             btn_conv_buf[ii].last_cc_value = pktToSend->data[pktLoc - 1];
                             if (verbose)
-                                printf("SX->CC: %s(%d) --> %02X %02d %02d\n", btn_conv_buf[ii].paramname
-                                       , btn_conv_buf[ii].ison
-                                       , pktToSend->data[pktLoc - 3]
-                                       , pktToSend->data[pktLoc - 2]
-                                       , pktToSend->data[pktLoc - 1]);
+                                printf("SX->CC: %s(%d) --> %02X %02d %02d\n",
+				       btn_conv_buf[ii].paramname,
+                                       btn_conv_buf[ii].ison,
+                                       pktToSend->data[pktLoc - 3],
+                                       pktToSend->data[pktLoc - 2],
+                                       pktToSend->data[pktLoc - 1]);
                         }
                     }
                 } else if (i >= btn_conv_buf[ii].index_start
@@ -434,23 +480,34 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
                     /* falls within a group bitmask--compare bitmask
 		       to lastbyte to figure out which member this
 		       should land on the first group member first */
-		    for (unsigned int iii = ii; btn_conv_buf[iii].group == btn_conv_buf[ii].group; iii++) {
-                        /* because it will trigger first group member first, we can figure it out in one pass from the first member */
+		    for (unsigned int iii = ii;
+			 btn_conv_buf[iii].group == btn_conv_buf[ii].group;
+			 iii++) {
+                        /* because it will trigger first group member
+			 * first, we can figure it out in one pass
+			 * from the first member */
 
-			if (convCmp_bitMask(btn_conv_buf[iii].onstate, valuebyte, btn_conv_buf[iii].index_start, btn_conv_buf[iii].index_end)) {
+			if (convCmp_bitMask(btn_conv_buf[iii].onstate,
+					    valuebyte,
+					    btn_conv_buf[iii].index_start,
+					    btn_conv_buf[iii].index_end)) {
                             /* it's a match */
 
-                            /* finally check that the thing isn't on already before appending the packet */
+                            /* finally check that the thing isn't on
+			     * already before appending the packet */
                             if (!btn_conv_buf[iii].ison) {
                                 /* append packet */
-                                convSXAppendGroupPacket(pktToSend, &btn_conv_buf[iii], &pktLoc);
+                                convSXAppendGroupPacket(pktToSend,
+							&btn_conv_buf[iii],
+							&pktLoc);
                                 /* save state */
                                 btn_conv_buf[ii].last_cc_value = pktToSend->data[pktLoc - 1];
                                 if (verbose)
-                                    printf("SX->CC: %s --> %02X %02d %02d\n", btn_conv_buf[iii].paramname
-                                           , pktToSend->data[pktLoc - 3]
-                                           , pktToSend->data[pktLoc - 2]
-                                           , pktToSend->data[pktLoc - 1]);
+                                    printf("SX->CC: %s --> %02X %02d %02d\n",
+					   btn_conv_buf[iii].paramname,
+                                           pktToSend->data[pktLoc - 3],
+                                           pktToSend->data[pktLoc - 2],
+                                           pktToSend->data[pktLoc - 1]);
                                 /* change states */
                                 convSX_GroupBtnOn(&btn_conv_buf[iii]);
                             }
@@ -489,7 +546,8 @@ convSX_CC_btn(Byte parambyte, Byte valuebyte, MIDIPacket *pktToSend)
     /* ret 0 = nothing to convert, ret 1 = cc message(s) to send */
 }
 
-/* set pb on and it's fellow group members off. it also sets the last valbyte properly */
+/* set pb on and it's fellow group members off. it also sets the last
+ * valbyte properly */
 Byte
 convSX_GroupBtnOn(struct btn_conversion_buffer *pb)
 {
@@ -528,7 +586,8 @@ convSX_GroupBtnOn(struct btn_conversion_buffer *pb)
     return retByte;
 }
 
-/* append pkt with cc state of pb using loc. also updates loc with the new data location */
+/* append pkt with cc state of pb using loc. also updates loc with the
+ * new data location */
 Byte
 convSXAppendGroupPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte *loc)
 {
@@ -547,13 +606,15 @@ convSXAppendGroupPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte 
         pkt->data[*loc + 2] = 127;
     else
         /* otherwise put it in the middle of its value range */
-        pkt->data[*loc + 2] = pb->cc_value_range_start + ((pb->cc_value_range_end - pb->cc_value_range_start) / 2);
+        pkt->data[*loc + 2] = pb->cc_value_range_start
+	    + ((pb->cc_value_range_end - pb->cc_value_range_start) / 2);
     /* update loc */
     *loc = *loc + 3;
     return retByte;
 }
 
-/* this one checks the members ison, because we are just flipping bits w/ this behavior */
+/* this one checks the members ison, because we are just flipping bits
+ * w/ this behavior */
 Byte
 convSXAppendNormPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte *loc)
 {
@@ -575,7 +636,10 @@ convSXAppendNormPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, Byte *
 /* make a packet -- pb = first group member, pob = second group
    member.  if pob != NULL, set both members */
 Byte
-convSXAppendSpecPacket(MIDIPacket *pkt, struct btn_conversion_buffer *pb, struct btn_conversion_buffer *pob, Byte *loc)
+convSXAppendSpecPacket(MIDIPacket *pkt,
+		       struct btn_conversion_buffer *pb,
+		       struct btn_conversion_buffer *pob,
+		       Byte *loc)
 {
     Byte retByte = 0;
     pkt->length = pkt->length + 3;
@@ -614,11 +678,13 @@ convGetCCValueByte(struct btn_conversion_buffer *pbuf, Byte sxValByte)
             if (pbuf->prevmember->group == pbuf->group) {
                 /* pbuf is the first member */
 
-                if (convCmp_bitMask(pbuf->prevmember->onstate, sxValByte, pbuf->prevmember->index_start, pbuf->prevmember->index_end)) {
+                if (convCmp_bitMask(pbuf->prevmember->onstate,
+				    sxValByte,
+				    pbuf->prevmember->index_start,
+				    pbuf->prevmember->index_end)) {
                     /* the prevmember is on */
 
-                    /* return pos 4 - both on */
-                    retval = 127;
+                    retval = 127; /* return pos 4 - both on */
                 } else {
                     /* return pos 3 pulse off saw on */
                     retval = 80;
@@ -631,7 +697,10 @@ convGetCCValueByte(struct btn_conversion_buffer *pbuf, Byte sxValByte)
             if (pbuf->nextmember->group == pbuf->group) {
                 /* pbuf is the second member */
 
-                if (convCmp_bitMask(pbuf->nextmember->onstate, sxValByte, pbuf->nextmember->index_start, pbuf->nextmember->index_end)) {
+                if (convCmp_bitMask(pbuf->nextmember->onstate,
+				    sxValByte,
+				    pbuf->nextmember->index_start,
+				    pbuf->nextmember->index_end)) {
                     /* the member is on */
 
                     /* should return position 4 -- both on */
@@ -661,10 +730,13 @@ convGetCCValueByte(struct btn_conversion_buffer *pbuf, Byte sxValByte)
             if (verbose)
                 printf("(wrong button) ");
         } else {
-            /* this should be the middle of the cc range for this group member */
-            retval = pbuf->cc_value_range_start + ((pbuf->cc_value_range_end - pbuf->cc_value_range_start) / 2) - 1;
-            /* if it's a top member, should make it 127, bottom member should be 0 probably */
-            /* now set it as on in the buffer and it's group members off */
+            /* this should be the middle of the cc range for this
+	     * group member */
+            retval = pbuf->cc_value_range_start
+		+ ((pbuf->cc_value_range_end - pbuf->cc_value_range_start) / 2) - 1;
+            /* if it's a top member, should make it 127, bottom member
+	     * should be 0 probably
+	     * now set it as on in the buffer and it's group members off */
             pbuf->ison = 1;
             if (verbose)
                 printf("ON ");
@@ -694,21 +766,27 @@ convGetCCValueByte(struct btn_conversion_buffer *pbuf, Byte sxValByte)
     return retval;
 }
 
-/* this should use a static byte and check itself for changes from 0 */
+/* this should use a static byte and check itself for changes from
+ * 0 */
 Byte
 convCC_btn_getstates(Byte pbyte)
 {
     CC_btnState = 0;
-    /* if (CC_btnState == 0)           //if all the buttons are 0 (this is the first time program is loaded probably) */
-    /* this loop uses the button buffer, the second one will use bit operations */
+    /* if (CC_btnState == 0) // if all the buttons are 0 (this is the
+     * first time program is loaded probably)
+     * this loop uses the button buffer, the second one will use bit operations */
     for (unsigned int i = 0; i < number_of_button_params; i++)
 	if (btn_conv_buf[i].sx_param_number == pbyte) {
 	    /* its a param match, now check onstates */
 
 	    if (btn_conv_buf[i].ison)
-                convSet_bitMask(btn_conv_buf[i].onstate, &CC_btnState, btn_conv_buf[i].index_start, btn_conv_buf[i].index_end);
+                convSet_bitMask(btn_conv_buf[i].onstate,
+				&CC_btnState,
+				btn_conv_buf[i].index_start,
+				btn_conv_buf[i].index_end);
 	}
-    /* can check for 0 if you want to check if this actually writes the bitmask */
+    /* can check for 0 if you want to check if this actually writes
+     * the bitmask */
     /*else
     //this loop should just check the CC_btnState using bit operations
     {
@@ -720,12 +798,14 @@ convCC_btn_getstates(Byte pbyte)
     return CC_btnState;
 }
 
-/* check this valuebyte -- need parambyte to get index numbers properly */
+/* check this valuebyte -- need parambyte to get index numbers
+ * properly */
 Byte
 convSX_btn_getstates(Byte parambyte, Byte valuebyte)
 {
     Byte retByte = 0;
-    int pindex = 0;             /* the index number for the lastbyte param number we want */
+    /* the index number for the lastbyte param number we want */
+    int pindex = 0;
     int i;
     for (i = 0; i < btn_sx_rangeamt; i++)
         if (btn_lastbyte[i].param == parambyte)
@@ -736,7 +816,8 @@ convSX_btn_getstates(Byte parambyte, Byte valuebyte)
             FLP_BIT(retByte, i);
     }
     return retByte;
-    /* returns a byte with 1's where there are changes to make, 0's where there aren't */
+    /* returns a byte with 1's where there are changes to make, 0's
+     * where there aren't */
 }
 
 /* if this gets called, we have already checked that the button isn't
@@ -744,14 +825,19 @@ convSX_btn_getstates(Byte parambyte, Byte valuebyte)
    otherwise the conversion functions wont create and send a packet */
 int
 conv_BtnOn(struct btn_conversion_buffer *pb, Byte *vbyte)
-{				/* determine the behavior for this button and turn it on */
-    /* set the proper bitmask in vbyte then set the buffer .ison's that must change according to the button behavior */
+{
+    /* determine the behavior for this button and turn it on
+     * set the proper bitmask in vbyte then set the buffer .ison's
+     * that must change according to the button behavior */
     int retval = 1;
-    *vbyte = convCC_btn_getstates(pb->sx_param_number);	/* returns the current button state */
+
+    /* returns the current button state */
+    *vbyte = convCC_btn_getstates(pb->sx_param_number);
     if (pb->ingroup) {
         /* this is a group button */
 
-        /* set the bitmask then set other group members as off in da buffer */
+        /* set the bitmask then set other group members as off in da
+	 * buffer */
         convSet_bitMask(pb->onstate, vbyte, pb->index_start, pb->index_end);
         pb->ison = 1;
         /* check for group members in both directions */
@@ -788,7 +874,8 @@ conv_BtnOn(struct btn_conversion_buffer *pb, Byte *vbyte)
         }
 
     } else {
-	/* this should handle everything else. btnOff should turn it off if it should be off */
+	/* this should handle everything else. btnOff should turn it
+	 * off if it should be off */
         convSet_bitMask(pb->onstate, vbyte, pb->index_start, pb->index_end);
         pb->ison = 1;
     }
@@ -807,7 +894,9 @@ conv_BtnOff(struct btn_conversion_buffer *pb, Byte *vbyte)
     int retval = 1;
     *vbyte = convCC_btn_getstates(pb->sx_param_number);
     pb->ison = 0;   		/* off */
-    /* set the bitmask by flipping the onstate -- this works because there are never more than 1 index to change w/ this subroutine */
+    /* set the bitmask by flipping the onstate -- this works because
+     * there are never more than 1 index to change w/ this
+     * subroutine */
     convSet_bitMask(FLP_BIT(pb->onstate, 0), vbyte, pb->index_start, pb->index_end);
     FLP_BIT(pb->onstate, 0);	/* flip it back afterwards */
     if (verbose)
@@ -840,7 +929,8 @@ convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
             pktToAdd.data[0] = CC_MSG_BYTE + (defs->recvchannel - 1);
             pktToAdd.data[1] = btn_conv_buf[i].cc_param_number;
             pktToAdd.data[2] = btn_conv_buf[i].last_cc_value;
-            pktToAdd.timeStamp = mach_absolute_time(); /* this needs to be set on an interval * count */
+	    /* this needs to be set on an interval * count */
+            pktToAdd.timeStamp = mach_absolute_time();
 
             /* to convert mach_absolute_time to nanos */
             mach_timebase_info_data_t info;
@@ -851,7 +941,8 @@ convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
             pktToAdd.timeStamp /= info.denom;
 
             /* calculate the scheduling based on interval */
-            pktToAdd.timeStamp = pktToAdd.timeStamp + ((5 NS_TO_MS) * packetcount)
+            pktToAdd.timeStamp = pktToAdd.timeStamp
+		+ ((5 NS_TO_MS) * packetcount)
 		+ (number_of_fader_params
 		   * (5 NS_TO_MS)
 		   + (5 NS_TO_MS)
@@ -859,7 +950,11 @@ convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
             /* this is correct calculation though */
             packetcount++;
 
-            printf("Dumping %02X %02d %02d\n", pktToAdd.data[0], pktToAdd.data[1], pktToAdd.data[2]);
+            printf("Dumping %02X %02d %02d\n",
+		   pktToAdd.data[0],
+		   pktToAdd.data[1],
+		   pktToAdd.data[2]);
+
             pkt = MIDIPacketListAdd(pktList,
                                     sizeof(*pktList),
                                     pkt,
@@ -873,7 +968,8 @@ convBtnDumpSaved(MIDIPacket *pkt, MIDIPacketList *pktList, int *count)
     return pkt;
 }
 
-/*  [INIT] these are functions to initialize the button conversion buffer */
+/*  [INIT] these are functions to initialize the button conversion
+ *  buffer */
 void
 init_button_buffer()
 {
@@ -891,7 +987,8 @@ init_button_buffer()
     }
     number_of_button_params = convGetNumberOfProperties(BTN_SECTION_NAME);
     if (verbose)
-        printf("Allocating %lu bytes for button buffer ", (sizeof(*btn_conv_buf) * number_of_button_params));
+        printf("Allocating %lu bytes for button buffer ",
+	       (sizeof(*btn_conv_buf) * number_of_button_params));
     btn_conv_buf = malloc(sizeof(*btn_conv_buf) * number_of_button_params);
     if (verbose)
         printf("to load %d button parameters... \n", number_of_button_params);
@@ -901,8 +998,13 @@ init_button_buffer()
 
         char *p = NULL;		/* pointer for loading strings into the buffer */
         Byte *pb = NULL;
-        convGetNextProperty(BTN_SECTION_NAME, (void **)&p); /* pass the paramname to our pointer */
-        if (!strncpy(&btn_conv_buf[i].paramname[0], p, sizeof(btn_conv_buf[i].paramname))) { /* copy paramname to the buffer */
+
+	/* pass the paramname to our pointer */
+        convGetNextProperty(BTN_SECTION_NAME, (void **)&p);
+        if (!strncpy(&btn_conv_buf[i].paramname[0],
+		     p,
+		     sizeof(btn_conv_buf[i].paramname))) {
+	    /* copy paramname to the buffer */
 	    printf("error: strncpy sux. failed to copy parameter name %s\n", p);
 	    exit(1);
 	}
@@ -922,21 +1024,29 @@ init_button_buffer()
         convGetNextProperty(BTN_SECTION_NAME, (void **)&pb); /* load onstate bitmask */
         btn_conv_buf[i].onstate = *pb;
         convGetNextProperty(BTN_SECTION_NAME, (void **)&pb);
-        btn_conv_buf[i].index_start = *pb; /* can't pass a bitfields address into GetNextProperty */
+	/* can't pass a bitfields address into GetNextProperty */
+        btn_conv_buf[i].index_start = *pb;
         if (btn_conv_buf[i].ingroup)
             btn_conv_buf[i].index_end = btn_conv_buf[i].index_start + lastbitmasklen;
         else
             btn_conv_buf[i].index_end = 0;
-        btn_conv_buf[i].last_cc_value = 231; /* to check if state has changed later */
+
+	/* to check if state has changed later */
+        btn_conv_buf[i].last_cc_value = 231;
         /* display_bits(btn_conv_buf[x].onstate); */
     }
 
     fclose(conversionfile);
-    /* create a sx param range int array that stores the different sx param numbers -- this decreases calculations for a juno 106 by up to 1/7 */
+    /* create a sx param range int array that stores the different sx
+     * param numbers -- this decreases calculations for a juno 106 by
+     * up to 1/7 */
     create_sx_param_range();	/* this uses malloc */
-    /* linking -- go through and link addresses between group members and nongroup members if they are special */
+    /* linking -- go through and link addresses between group members
+     * and nongroup members if they are special */
     link_btn_params();
-    /* cc ranges - first get the number of buttons in each group, buttons not in a group, or buttons in a group with an adjacent member with the same cc parameter number */
+    /* cc ranges - first get the number of buttons in each group,
+     * buttons not in a group, or buttons in a group with an adjacent
+     * member with the same cc parameter number */
     /* show_btn_groups(); */
     load_cc_ranges(btn_conv_buf);
 
@@ -945,19 +1055,25 @@ init_button_buffer()
     /* convert duration to nanoseconds */
     duration *= info.numer;
     duration /= info.denom;
-    printf("time to fill button buffer: %llu nanos, %f ms\n", duration, (duration / 1000000.00));
+    printf("time to fill button buffer: %llu nanos, %f ms\n",
+	   duration,
+	   (duration / 1000000.00));
 #endif
 }
 
-/* this function should first determine if this member of the buffer is in a group, not in a group,
+/* this function should first determine if this member of the buffer is in a group,
+   not in a group,
    or not in a group but still sharing cc with another member.
-   then it should load the proper cc ranges based on the group--
-   0-64 65-127 if not in group
-   127/4 for nongroup but cc matches - one iteration per permutation of the four groups being off/on
-   127/x(the number of buttons in group) - one iteration per group being on (the rest in group are turned off) */
+   then it should load the proper cc ranges based on the group --
+   0-64 65-127 if not in group --
+   127/4 for nongroup but cc matches - one iteration per permutation of the four
+   groups being off/on --
+   127/x(the number of buttons in group) - one iteration per group being on
+   (the rest in group are turned off) */
 int
 load_cc_ranges(struct btn_conversion_buffer *bcnv)
-/* subroutine for init_button_buffer to load the cc ranges properly using links nextmember and prevmember */
+/* subroutine for init_button_buffer to load the cc ranges properly
+ * using links nextmember and prevmember */
 {
     for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (bcnv[i].ingroup && bcnv[i].prevmember == NULL) {
@@ -968,27 +1084,37 @@ load_cc_ranges(struct btn_conversion_buffer *bcnv)
             for (; bp != NULL; bp = bp->nextmember)
                 if (bp->group == bcnv[i].group)
                     gamt++;
-            /* printf("%d group members in group %d\n", gamt, bcnv[i].group); */
-            /* all this cc range setting stuff should probably use subroutines that return int values */
-            /* but use floating point math to determine the ranges more precisely */
+            /* printf("%d group members in group %d\n", gamt,
+	     * bcnv[i].group); */
+            /* all this cc range setting stuff should probably use
+	     * subroutines that return int values */
+            /* but use floating point math to determine the ranges
+	     * more precisely */
             bp = bcnv[i].nextmember;
             int count = 0;
 
 	    /* load first group member */
             bcnv[i].cc_value_range_start = calc_cc_start(gamt, count);
             bcnv[i].cc_value_range_end = calc_cc_end(gamt, count);
-            /* printf("loaded %s with CCS: %d, CCE: %d\n", bcnv[i].paramname, bcnv[i].cc_value_range_start, bcnv[i].cc_value_range_end); */
+            /* printf("loaded %s with CCS: %d, CCE: %d\n",
+	     * bcnv[i].paramname, bcnv[i].cc_value_range_start,
+	     * bcnv[i].cc_value_range_end); */
             count++;
             for (; bp != NULL; bp = bp->nextmember) {
                 bp->cc_value_range_start = calc_cc_start(gamt, count);
                 bp->cc_value_range_end = calc_cc_end(gamt, count);
-                /* printf("loaded %s with CCS: %d, CCE: %d\n", bp->paramname, bp->cc_value_range_start, bp->cc_value_range_end); */
+                /* printf("loaded %s with CCS: %d, CCE: %d\n",
+		 * bp->paramname, bp->cc_value_range_start,
+		 * bp->cc_value_range_end); */
                 count++;
             }
 
-        } else if (!bcnv[i].ingroup && btn_conv_buf[i].prevmember == NULL && btn_conv_buf[i].nextmember != NULL) {
-            /* special btn non group first member */
-	    /* this is a total hack right now, implement this for more than two buttons in a special group later */
+        } else if (!bcnv[i].ingroup &&
+		   btn_conv_buf[i].prevmember == NULL &&
+		   btn_conv_buf[i].nextmember != NULL) {
+            /* special btn non group first member
+	     * this is a total hack right now, implement this for more
+	     * than two buttons in a special group later */
             bcnv[i].cc_value_range_start = 32;
             bcnv[i].cc_value_range_end = 96;
             bcnv[i].nextmember->cc_value_range_start = 64;
@@ -996,7 +1122,8 @@ load_cc_ranges(struct btn_conversion_buffer *bcnv)
         } else {
             /* not in group */
             if (bcnv[i].cc_value_range_start == 0 && bcnv[i].cc_value_range_end == 0) {
-                /* if the cc range hasn't been filled, this is a non-group, non-special member */
+                /* if the cc range hasn't been filled, this is a
+		 * non-group, non-special member */
 
                 /* bcnv[i].cc_value_range_start = 64; */
                 /* bcnv[i].cc_value_range_end = 127; */
@@ -1007,9 +1134,10 @@ load_cc_ranges(struct btn_conversion_buffer *bcnv)
     return 1;
 }
 
+/* this creates a struct to hold lastvalbytes for the sx host to
+ * figure out what button state has changed */
 void
 create_sx_param_range()
-/* this creates a struct to hold lastvalbytes for the sx host to figure out what button state has changed */
 {
     int lastparam = 0, count = 0;
     for (unsigned int i = 0; i < number_of_button_params; i++)
@@ -1018,11 +1146,16 @@ create_sx_param_range()
             lastparam = btn_conv_buf[i].sx_param_number;
             count++;
         }
+
     /* malloc the lastbyte struct and fill it */
     btn_lastbyte = malloc(sizeof(*btn_lastbyte) * count);
     if (verbose)
-        printf("Allocated %lu bytes for %d unique sysex buttons parameters...\n", (sizeof(*btn_lastbyte) * count), count);
-    lastparam = 0;      	/* in case there's only one param number */
+        printf("Allocated %lu bytes for %d unique sysex buttons parameters...\n",
+	       (sizeof(*btn_lastbyte) * count),
+	       count);
+
+    /* in case there's only one param number */
+    lastparam = 0;
 
     for (i = 0; i < number_of_button_params; i++)
         if (btn_conv_buf[i].sx_param_number != lastparam) {
@@ -1045,12 +1178,17 @@ link_btn_params()
 {
     for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].ingroup) {
-            /* this should have subroutines that don't require things to be next to each other in the buffer to be linked */
-            if (btn_conv_buf[i].group == btn_conv_buf[i - 1].group)
-                /* if prev group is the same link */
-                btn_conv_buf[i].prevmember = &btn_conv_buf[i - 1];
-            else
-                btn_conv_buf[i].prevmember = NULL;
+            /* this should have subroutines that don't require things
+	     * to be next to each other in the buffer to be linked */
+	    if (i > 0)
+		if (btn_conv_buf[i].group == btn_conv_buf[i - 1].group)
+		    /* if prev group is the same link */
+		    btn_conv_buf[i].prevmember = &btn_conv_buf[i - 1];
+		else
+		    btn_conv_buf[i].prevmember = NULL;
+	    else
+		btn_conv_buf[i].prevmember = NULL;
+
             if (i != number_of_button_params - 1) /* to protect memory */
                 if (btn_conv_buf[i].group == btn_conv_buf[i + 1].group)
                     btn_conv_buf[i].nextmember = &btn_conv_buf[i + 1];
@@ -1107,8 +1245,9 @@ display_btns()
     }
 }
 
-/* later these two following sub routines should be updated to do more precise calcs using floats
-   also these subroutines are only for group buttons right now */
+/* later these two following sub routines should be updated to do more
+   precise calcs g floats.  also these subroutines are only for group
+   buttons right now */
 int
 calc_cc_start(int gamt, int gmemb)
 {
@@ -1133,19 +1272,27 @@ calc_cc_end(int gamt, int gmemb)
 void
 show_btn_groups()
 {
-    /* searches through the buffer and displays each grouped button organized by member */
+    /* searches through the buffer and displays each grouped button
+     * organized by member */
     for (unsigned int i = 0; i < number_of_button_params; i++) {
         if (btn_conv_buf[i].ingroup && btn_conv_buf[i].prevmember == NULL) {
             /* this button is the first member in a group */
             int count = 0;
 	    int x;
 
-            for (x = i; btn_conv_buf[x].nextmember != NULL || (btn_conv_buf[x].prevmember != NULL && btn_conv_buf[x].nextmember == NULL); x++)
+            for (x = i; btn_conv_buf[x].nextmember != NULL ||
+		     (btn_conv_buf[x].prevmember != NULL &&
+		      btn_conv_buf[x].nextmember == NULL); x++)
                 /* follow nextmembers till we run out of them */
-                /* this still assumes they are next to each other in the buffer and it probably shouldn't have to */
+                /* this still assumes they are next to each other in
+		 * the buffer and it probably shouldn't have to */
                 if (btn_conv_buf[x].group == btn_conv_buf[i].group)
                     count++;
-            printf("%d members in group %d\n%s\n", count, btn_conv_buf[i].group, btn_conv_buf[i].paramname);
+
+            printf("%d members in group %d\n%s\n",
+		   count,
+		   btn_conv_buf[i].group,
+		   btn_conv_buf[i].paramname);
 
 	    struct btn_conversion_buffer *bp;
             for (bp = btn_conv_buf[i].nextmember; bp != NULL; bp = bp->nextmember) {
@@ -1154,16 +1301,26 @@ show_btn_groups()
             }
         }
 
-        if (!btn_conv_buf[i].ingroup && btn_conv_buf[i].prevmember == NULL && btn_conv_buf[i].nextmember != NULL) {
-            /* this is the first member of a special button (non)group */
+        if (!btn_conv_buf[i].ingroup &&
+	    btn_conv_buf[i].prevmember == NULL &&
+	    btn_conv_buf[i].nextmember != NULL) {
+            /* this is the first member of a special button
+	     * (non)group */
 
             int count = 0;
 	    int x;
-            for (x = i; btn_conv_buf[x].nextmember != NULL && (!btn_conv_buf[x].ingroup || (btn_conv_buf[x].prevmember != NULL && btn_conv_buf[x].nextmember == NULL)); x++)
+            for (x = i; btn_conv_buf[x].nextmember != NULL &&
+		     (!btn_conv_buf[x].ingroup ||
+		      (btn_conv_buf[x].prevmember != NULL &&
+		       btn_conv_buf[x].nextmember == NULL)); x++)
                 /* follow nextmembers till we run out of them */
-                /* this still assumes they are next to each other in the buffer and it probably shouldn't have to */
+                /* this still assumes they are next to each other in
+		 * the buffer and it probably shouldn't have to */
 		count++;
-            printf("%d members in special group\n%s\n", count, btn_conv_buf[i].paramname);
+            printf("%d members in special group\n%s\n",
+		   count,
+		   btn_conv_buf[i].paramname);
+
             struct btn_conversion_buffer *bp = btn_conv_buf[i].nextmember;
             while (bp != NULL) {
                 printf("%s\n", bp->paramname);
@@ -1178,8 +1335,6 @@ display_button_states()
 {
     for (unsigned int i = 0; i < number_of_button_params; i++) {
 	printf("%s | ", btn_conv_buf[i].paramname);
-	if (btn_conv_buf[i].ison)
-	    printf("ON\n");
-	else printf("OFF\n");
+	btn_conv_buf[i].ison ? printf("ON\n") : printf("OFF\n");
     }
 }
